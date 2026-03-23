@@ -1,0 +1,92 @@
+# .gitignore for ClassWiz (iOS / Swift / Xcode)
+
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.xcworkspace
+*.xcsettings
+xcuserdata/
+*.xcuserdatad
+*.xcresult
+*.xcactivitylog
+*.xccheckout
+
+# Xcode scheme and workspace settings (user-specific)
+*.xcuserstate
+*.xccheckout
+xcshareddata
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/README.md
+
+# CocoaPods & SPM caches
+~/.cocoapods
+
+# App-specific
+*.ipa
+*.app
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon\r
+
+# Firebase
+# GoogleService-Info.plist contains API keys and project identifiers. Keep it out of source control.
+# If you must include a sample for developers, add GoogleService-Info.example.plist without real secrets.
+GoogleService-Info.plist
+
+# Environment / secrets
+.env
+.env.*
+.env.local
+
+# Local configuration files
+*.local
+*.env
+
+# Logs
+*.log
+
+# Archive
+*.xcarchive
+
+# Editor folders
+.idea/
+.vscode/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Generated files
+**/Generated/*
+
+# Ignore certificate and provisioning profiles
+*.p12
+*.mobileprovision
+
+# Ignore build artifacts from CI
+/fastlane/metadata/
+
+# Ignore SwiftPM workspace artifacts
+.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# Keep README/sample for how to add GoogleService-Info.plist
+# (Do NOT include real credentials in repo)
+
+# End of .gitignore for ClassWiz
