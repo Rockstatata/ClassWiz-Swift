@@ -15,7 +15,21 @@ final class BatchService {
 
     func fetchAll() async throws -> [Batch] {
         let snapshot = try await collection.order(by: "year", descending: true).getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: Batch.self) }
+        var batches: [Batch] = []
+        for doc in snapshot.documents {
+            do {
+                let batch = try doc.data(as: Batch.self)
+                batches.append(batch)
+            } catch {
+                print("Failed to decode batch \(doc.documentID): \(error)")
+                // Optionally throw to completely halt, but logging + appending valid ones is more resilient.
+                // We'll throw if NO batches could be decoded at all but the snapshot isn't empty.
+            }
+        }
+        if batches.isEmpty && !snapshot.isEmpty {
+            throw ClassWizError.validationFailed("Failed to decode any batches from database.")
+        }
+        return batches
     }
 
     func fetchBatch(id: String) async throws -> Batch {

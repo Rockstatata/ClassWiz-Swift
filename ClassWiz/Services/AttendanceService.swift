@@ -16,18 +16,18 @@ final class AttendanceService {
     func fetchAttendance(studentId: String) async throws -> [AttendanceRecord] {
         let snapshot = try await collection
             .whereField("studentId", isEqualTo: studentId)
-            .order(by: "date", descending: true)
             .getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: AttendanceRecord.self) }
+        let records = snapshot.documents.compactMap { try? $0.data(as: AttendanceRecord.self) }
+        return records.sorted { $0.date > $1.date }
     }
 
     func fetchAttendance(studentId: String, courseId: String) async throws -> [AttendanceRecord] {
         let snapshot = try await collection
             .whereField("studentId", isEqualTo: studentId)
             .whereField("courseId", isEqualTo: courseId)
-            .order(by: "date", descending: true)
             .getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: AttendanceRecord.self) }
+        let records = snapshot.documents.compactMap { try? $0.data(as: AttendanceRecord.self) }
+        return records.sorted { $0.date > $1.date }
     }
 
     // MARK: - Fetch for Teacher (by course + date)
@@ -37,12 +37,12 @@ final class AttendanceService {
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
+        // To avoid composite indexes, fetch by courseId then filter locally
         let snapshot = try await collection
             .whereField("courseId", isEqualTo: courseId)
-            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-            .whereField("date", isLessThan: Timestamp(date: endOfDay))
             .getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: AttendanceRecord.self) }
+        let records = snapshot.documents.compactMap { try? $0.data(as: AttendanceRecord.self) }
+        return records.filter { $0.date >= startOfDay && $0.date < endOfDay }
     }
 
     func fetchAttendance(courseId: String, batchId: String, date: Date) async throws -> [AttendanceRecord] {
@@ -122,5 +122,90 @@ final class AttendanceService {
         let now = Date()
         let elapsed = now.timeIntervalSince(recordDate)
         return elapsed < Double(windowHours) * 3600
+    }
+    
+    func markStudent(studentId: String, courseId: String, teacherId: String, date: Date, status: AttendanceStatus) async throws {
+        let record = AttendanceRecord(
+            studentId: studentId,
+            courseId: courseId,
+            date: date,
+            status: status,
+            markedBy: teacherId
+        )
+        // Store one record per student/course/day to keep it simple
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd"
+        let dateStr = formatter.string(from: date)
+        let docId = "\(studentId)_\(courseId)_\(dateStr)"
+        
+        try collection.document(docId).setData(from: record)
+    }
+}
+
+// MARK: - Automated Attendance Service
+final class AutomatedAttendanceService {
+    static let shared = AutomatedAttendanceService()
+    private let sessionsRef = Firestore.firestore().collection("automatedAttendanceSessions")
+    
+    // Teacher creates an active session
+    func startSession(routineId: String, teacherId: String, courseId: String, batchId: String, durationByMinutes: Int) async throws -> AttendanceSession {
+        // Find existing to deactivate
+        let existing = try await sessionsRef.whereField("routineId", isEqualTo: routineId).whereField("isActive", isEqualTo: true).getDocuments()
+        for doc in existing.documents {
+            try await doc.reference.updateData(["isActive": false])
+        }
+
+        let code = String(format: "%04d", Int.random(in: 1000...9999))
+        let expiresAt = Calendar.current.date(byAdding: .minute, value: durationByMinutes, to: Date()) ?? Date()
+        
+        let session = AttendanceSession(
+            routineId: routineId,
+            teacherId: teacherId,
+            courseId: courseId,
+            batchId: batchId,
+            secretCode: code,
+            expiresAt: expiresAt,
+            isActive: true
+        )
+        
+        let ref = try sessionsRef.addDocument(from: session)
+        var updatedSession = session
+        updatedSession.id = ref.documentID
+        return updatedSession
+    }
+    
+    func endSession(sessionId: String) async throws {
+        guard !sessionId.isEmpty else { return }
+        try await sessionsRef.document(sessionId).updateData(["isActive": false])
+    }
+    
+    func fetchActiveSession(forBatch batchId: String) async throws -> AttendanceSession? {
+        let snapshot = try await sessionsRef
+            .whereField("batchId", isEqualTo: batchId)
+            .whereField("isActive", isEqualTo: true)
+            .getDocuments()
+        
+        let docs = snapshot.documents.compactMap { try? $0.data(as: AttendanceSession.self) }
+        return docs.reversed().first(where: { $0.expiresAt > Date() }) // latest active unexpired
+    }
+    
+    func submitCode(sessionId: String, code: String, studentId: String, courseId: String) async throws -> Bool {
+        let snapshot = try await sessionsRef.document(sessionId).getDocument()
+        guard let session = try? snapshot.data(as: AttendanceSession.self), session.isActive, session.expiresAt > Date() else {
+            return false
+        }
+        
+        if session.secretCode == code {
+            try await AttendanceService.shared.markStudent(
+                studentId: studentId,
+                courseId: courseId,
+                teacherId: session.teacherId,
+                date: Date(),
+                status: .present
+            )
+            return true
+        }
+        
+        return false
     }
 }
