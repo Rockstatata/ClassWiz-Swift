@@ -15,7 +15,7 @@ struct PendingApprovalView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             LinearGradient(
                 colors: [AppTheme.warning.opacity(0.06), AppTheme.background, AppTheme.background],
