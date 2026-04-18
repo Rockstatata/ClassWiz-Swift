@@ -8,8 +8,6 @@ struct RootRouter: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
-
             switch appState.authState {
             case .loading:
                 LoadingView()
@@ -28,6 +26,7 @@ struct RootRouter: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
+        .background(AppTheme.background.ignoresSafeArea())
         .animation(AppTheme.defaultAnimation, value: appState.authState)
         .overlay(alignment: .top) {
             if appState.isOffline {
