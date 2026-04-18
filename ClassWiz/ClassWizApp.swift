@@ -42,12 +42,18 @@ struct ClassWizApp: App {
 
     private func configureAppearance() {
         let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
+        navAppearance.configureWithDefaultBackground()
+        // Optional: add a slight blur or tint if desired, but default is usually best
+        // navAppearance.backgroundColor = .clear
+        // navAppearance.backgroundEffect = UIBlurEffect(style: .systemThinMaterial)
+        
         UINavigationBar.appearance().standardAppearance = navAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().compactAppearance = navAppearance
 
         let tabAppearance = UITabBarAppearance()
-        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.configureWithDefaultBackground()
+        
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
     }

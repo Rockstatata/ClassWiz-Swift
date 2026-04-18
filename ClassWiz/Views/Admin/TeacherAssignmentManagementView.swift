@@ -82,7 +82,7 @@ struct TeacherAssignmentManagementView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             if viewModel.isLoading {
                 ProgressView().tint(AppTheme.primary)
@@ -112,7 +112,8 @@ struct TeacherAssignmentManagementView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .navigationTitle("Teacher Assignments")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Teacher Assignments")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -182,7 +183,7 @@ struct TeacherAssignmentFormView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             Form {
                 Section("Assignment Details") {
@@ -232,7 +233,8 @@ struct TeacherAssignmentFormView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("New Assignment")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("New Assignment")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {

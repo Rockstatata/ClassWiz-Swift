@@ -44,7 +44,9 @@ final class CourseManagementViewModel: ObservableObject {
     func toggleActive(_ course: Course) async {
         guard let id = course.id else { return }
         do {
-            try await CourseService.shared.toggleActive(id: id, isActive: !course.isActive)
+            var updatedCourse = course
+            updatedCourse.isActive.toggle()
+            try await CourseService.shared.update(updatedCourse)
             if let idx = courses.firstIndex(where: { $0.id == id }) {
                 courses[idx].isActive.toggle()
             }
@@ -60,12 +62,11 @@ struct CourseManagementView: View {
     @State private var showAddForm = false
 
     var body: some View {
-        NavigationStack {
+        ClassWizScreen(title: "Courses", subtitle: "Manage your courses", scrollable: false) {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
-
                 if viewModel.isLoading {
                     ProgressView().tint(AppTheme.primary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.courses.isEmpty {
                     EmptyStateView(
                         icon: "book.closed",
@@ -75,107 +76,132 @@ struct CourseManagementView: View {
                     ) {
                         showAddForm = true
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
-                        ForEach(viewModel.filteredCourses) { course in
-                            NavigationLink(destination: CourseFormView(mode: .edit(course))) {
-                                courseRow(course)
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Task { await viewModel.deleteCourse(course) }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                    VStack(spacing: 0) {
+                        CWSearchBar(text: $viewModel.searchText, placeholder: "Search courses...")
+                            .padding(.top, 16)
+                            .padding(.bottom, 8)
+                        
+                        List {
+                            ForEach(viewModel.filteredCourses) { course in
+                                NavigationLink(destination: CourseFormView(mode: .edit(course))) {
+                                    courseRow(course)
                                 }
-
-                                Button {
-                                    Task { await viewModel.toggleActive(course) }
-                                } label: {
-                                    Label(
-                                        course.isActive ? "Archive" : "Activate",
-                                        systemImage: course.isActive ? "archivebox" : "checkmark.circle"
-                                    )
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        Task { await viewModel.deleteCourse(course) }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+    
+                                    Button {
+                                        Task { await viewModel.toggleActive(course) }
+                                    } label: {
+                                        Label(
+                                            course.isActive ? "Archive" : "Activate",
+                                            systemImage: course.isActive ? "archivebox" : "checkmark.circle"
+                                        )
+                                    }
+                                    .tint(course.isActive ? AppTheme.warning : AppTheme.safe)
                                 }
-                                .tint(course.isActive ? AppTheme.warning : AppTheme.safe)
                             }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .searchable(text: $viewModel.searchText, prompt: "Search courses...")
-                }
-            }
-            .navigationTitle("Courses")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showAddForm = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(AppTheme.primary)
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
                 }
-            }
-            .sheet(isPresented: $showAddForm) {
-                NavigationStack {
-                    CourseFormView(mode: .add) {
-                        showAddForm = false
-                        Task { await viewModel.loadCourses() }
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            showAddForm = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title2.weight(.bold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(AppTheme.primaryGradient)
+                                .clipShape(Circle())
+                                .shadow(color: AppTheme.primary.opacity(0.4), radius: 10, x: 0, y: 5)
+                        }
+                        .padding(.trailing, 24)
+                        .padding(.bottom, 24)
                     }
                 }
             }
-            .refreshable {
-                await viewModel.loadCourses()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .sheet(isPresented: $showAddForm) {
+            NavigationStack {
+                CourseFormView(mode: .add) {
+                    showAddForm = false
+                    Task { await viewModel.loadCourses() }
+                }
             }
-            .task {
-                await viewModel.loadCourses()
-            }
+        }
+        .refreshable {
+            await viewModel.loadCourses()
+        }
+        .task {
+            await viewModel.loadCourses()
         }
     }
 
     private func courseRow(_ course: Course) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(course.isActive ? AppTheme.primary.opacity(0.1) : AppTheme.textSecondary.opacity(0.1))
-                    .frame(width: 40, height: 40)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(course.name)
+                        .font(.title3.weight(.bold))
+                        .foregroundColor(AppTheme.textPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
 
-                Image(systemName: "book.fill")
-                    .foregroundColor(course.isActive ? AppTheme.primary : AppTheme.textSecondary)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(course.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-
-                HStack(spacing: AppTheme.spacingSM) {
-                    Text(course.code)
-                        .font(.caption)
-                        .foregroundColor(AppTheme.textSecondary)
-
-                    Text("•")
-                        .foregroundColor(AppTheme.textSecondary)
-
-                    Text("\(course.credit) credits")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.textSecondary)
+                    HStack(spacing: 8) {
+                        Label(course.code, systemImage: "tag.fill")
+                            .font(.caption.weight(.bold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(AppTheme.primary.opacity(0.15))
+                            .foregroundColor(AppTheme.primary)
+                            .cornerRadius(8)
+                        
+                        Label("\(String(format: "%g", course.credit)) Credits", systemImage: "clock.fill")
+                            .font(.caption.weight(.bold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(AppTheme.accent.opacity(0.15))
+                            .foregroundColor(AppTheme.accent)
+                            .cornerRadius(8)
+                    }
+                }
+                
+                Spacer()
+                
+                ZStack {
+                    Circle()
+                        .fill(course.isActive ? AppTheme.safe.opacity(0.15) : AppTheme.textSecondary.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: course.isActive ? "checkmark.circle.fill" : "archivebox.fill")
+                        .font(.title3)
+                        .foregroundColor(course.isActive ? AppTheme.safe : AppTheme.textSecondary)
                 }
             }
-
-            Spacer()
-
-            Text(course.isActive ? "Active" : "Archived")
-                .font(.caption2.weight(.semibold))
-                .foregroundColor(course.isActive ? AppTheme.safe : AppTheme.textSecondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill((course.isActive ? AppTheme.safe : AppTheme.textSecondary).opacity(0.12))
-                )
         }
-        .padding(.vertical, 4)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(UIColor.secondarySystemGroupedBackground))
+                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+        )
+        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
     }
 }
 
@@ -193,7 +219,7 @@ struct CourseFormView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var code = ""
     @State private var name = ""
-    @State private var credit = 3
+    @State private var credit: Double = 3.0
     @State private var isActive = true
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -221,7 +247,7 @@ struct CourseFormView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             Form {
                 Section("Course Details") {
@@ -230,7 +256,7 @@ struct CourseFormView: View {
 
                     TextField("Course Name", text: $name)
 
-                    Stepper("Credits: \(credit)", value: $credit, in: 1...6)
+                    Stepper("Credits: \(String(format: "%g", credit))", value: $credit, in: 0.25...6.0, step: 0.25)
 
                     Toggle("Active", isOn: $isActive)
                 }
@@ -264,7 +290,8 @@ struct CourseFormView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {

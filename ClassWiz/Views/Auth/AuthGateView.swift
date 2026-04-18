@@ -271,9 +271,12 @@ struct AuthGateView: View {
                 .overlay(RoundedRectangle(cornerRadius: 24).stroke(
                     LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
                 .shadow(color: AppTheme.primary.opacity(0.10), radius: 30, y: 10)
-                .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
+                .shadow(color: Color.black.opacity(0.06), radius: 10, y: 4)
         )
         .onAppear { if selectedTab == .signUp { viewModel.loadBatches() } }
+        .onChange(of: selectedTab) { newTab in
+            if newTab == .signUp { viewModel.loadBatches() }
+        }
     }
 
     // MARK: - Login Fields
@@ -479,11 +482,18 @@ struct AuthGateView: View {
                     withAnimation(AppTheme.quickAnimation) { isVisible.wrappedValue.toggle() }
                     HapticManager.selection()
                 } label: {
-                    Image(systemName: isVisible.wrappedValue ? "eye.slash.fill" : "eye.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(isVisible.wrappedValue ? AppTheme.primary : AppTheme.textSecondary)
-                        .contentTransition(.symbolEffect(.replace))
-                        .frame(width: 24, height: 24)
+                    if #available(iOS 17.0, *) {
+                        Image(systemName: isVisible.wrappedValue ? "eye.slash.fill" : "eye.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(isVisible.wrappedValue ? AppTheme.primary : AppTheme.textSecondary)
+                            .contentTransition(.symbolEffect(.replace))
+                            .frame(width: 24, height: 24)
+                    } else {
+                        Image(systemName: isVisible.wrappedValue ? "eye.slash.fill" : "eye.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(isVisible.wrappedValue ? AppTheme.primary : AppTheme.textSecondary)
+                            .frame(width: 24, height: 24)
+                    }
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 14)

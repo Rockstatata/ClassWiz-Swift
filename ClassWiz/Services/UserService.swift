@@ -96,6 +96,8 @@ final class UserService {
         ]
         if let batchId = user.batchId {
             userData["batchId"] = batchId
+        } else {
+            userData["batchId"] = FieldValue.delete()
         }
         try await collection.document(user.id).updateData(userData)
     }
@@ -115,5 +117,11 @@ final class UserService {
 
     func deleteUser(userId: String) async throws {
         try await collection.document(userId).delete()
+    }
+
+    // MARK: - Collections
+
+    func getAllCollections() -> [String] {
+        return ["users", "batches", "courses", "routines", "attendance", "teacherAssignments", "courseAnalytics", "assignments", "assignmentSubmissions", "automatedAttendanceSessions"]
     }
 }

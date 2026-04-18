@@ -72,7 +72,12 @@ final class AuthViewModel: ObservableObject {
 
     func loadBatches() {
         Task {
-            availableBatches = (try? await BatchService.shared.fetchAll()) ?? []
+            do {
+                availableBatches = try await BatchService.shared.fetchAll()
+            } catch {
+                errorMessage = "Failed to load batches: \(error.localizedDescription)"
+                showError = true
+            }
         }
     }
 

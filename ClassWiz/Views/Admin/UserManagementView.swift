@@ -56,46 +56,62 @@ struct UserManagementView: View {
     @State private var showCreateUser = false
 
     var body: some View {
-        ZStack {
-            AppTheme.background.ignoresSafeArea()
+        ClassWizScreen(title: "Users", subtitle: "Manage system accounts", scrollable: false) {
+            ZStack {
+                if viewModel.isLoading {
+                    ProgressView().tint(AppTheme.primary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(spacing: 0) {
+                        CWSearchBar(text: $viewModel.searchText, placeholder: "Search users...")
+                            .padding(.top, 16)
+                            .padding(.bottom, 8)
+                            
+                        // Role filter
+                        roleFilter
+                            .padding(.bottom, 8)
 
-            if viewModel.isLoading {
-                ProgressView().tint(AppTheme.primary)
-            } else {
-                VStack(spacing: 0) {
-                    // Role filter
-                    roleFilter
-
-                    List {
-                        ForEach(viewModel.filteredUsers) { user in
-                            userRow(user)
-                                .swipeActions(edge: .trailing) {
-                                    if user.role != .admin {
-                                        Button(role: .destructive) {
-                                            Task { await viewModel.deleteUser(user) }
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
+                        List {
+                            ForEach(viewModel.filteredUsers) { user in
+                                userRow(user)
+                                    .swipeActions(edge: .trailing) {
+                                        if user.role != .admin {
+                                            Button(role: .destructive) {
+                                                Task { await viewModel.deleteUser(user) }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
                                         }
                                     }
-                                }
+                            }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .searchable(text: $viewModel.searchText, prompt: "Search users...")
+                }
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            showCreateUser = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title2.weight(.bold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(AppTheme.primaryGradient)
+                                .clipShape(Circle())
+                                .shadow(color: AppTheme.primary.opacity(0.4), radius: 10, x: 0, y: 5)
+                        }
+                        .padding(.trailing, 24)
+                    }
                 }
             }
-        }
-        .navigationTitle("Users")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showCreateUser = true
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(AppTheme.primary)
-                }
-            }
+            .padding(.bottom, AppTheme.spacingMD)
         }
         .sheet(isPresented: $showCreateUser) {
             NavigationStack {
@@ -104,9 +120,6 @@ struct UserManagementView: View {
                     Task { await viewModel.loadUsers() }
                 }
             }
-        }
-        .refreshable {
-            await viewModel.loadUsers()
         }
         .task {
             await viewModel.loadUsers()
@@ -211,7 +224,7 @@ struct UserCreationView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             Form {
                 Section("User Information") {
@@ -266,7 +279,8 @@ struct UserCreationView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Create User")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Create User")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {

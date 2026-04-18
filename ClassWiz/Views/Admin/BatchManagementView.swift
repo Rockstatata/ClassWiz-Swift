@@ -38,12 +38,11 @@ struct BatchManagementView: View {
     @State private var showAddForm = false
 
     var body: some View {
-        NavigationStack {
+        ClassWizScreen(title: "Batches", subtitle: "Manage academic batches", scrollable: false) {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
-
                 if viewModel.isLoading {
                     ProgressView().tint(AppTheme.primary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.batches.isEmpty {
                     EmptyStateView(
                         icon: "person.3",
@@ -53,6 +52,7 @@ struct BatchManagementView: View {
                     ) {
                         showAddForm = true
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
                         ForEach(viewModel.batches) { batch in
@@ -67,68 +67,88 @@ struct BatchManagementView: View {
                                 }
                             }
                         }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                 }
-            }
-            .navigationTitle("Batches")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showAddForm = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(AppTheme.primary)
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            showAddForm = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title2.weight(.bold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(AppTheme.primaryGradient)
+                                .clipShape(Circle())
+                                .shadow(color: AppTheme.primary.opacity(0.4), radius: 10, x: 0, y: 5)
+                        }
+                        .padding(.trailing, 24)
+                        .padding(.bottom, 24)
                     }
                 }
             }
-            .sheet(isPresented: $showAddForm) {
-                NavigationStack {
-                    BatchFormView(mode: .add) {
-                        showAddForm = false
-                        Task { await viewModel.loadBatches() }
-                    }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .sheet(isPresented: $showAddForm) {
+            NavigationStack {
+                BatchFormView(mode: .add) {
+                    showAddForm = false
+                    Task { await viewModel.loadBatches() }
                 }
             }
-            .refreshable {
-                await viewModel.loadBatches()
-            }
-            .task {
-                await viewModel.loadBatches()
-            }
+        }
+        .refreshable {
+            await viewModel.loadBatches()
+        }
+        .task {
+            await viewModel.loadBatches()
         }
     }
 
     private func batchRow(_ batch: Batch) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(AppTheme.secondary.opacity(0.1))
-                    .frame(width: 40, height: 40)
-
-                Image(systemName: "person.3.fill")
-                    .foregroundColor(AppTheme.secondary)
-                    .font(.caption)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(batch.name)
+                .font(.title3.weight(.bold))
+                .foregroundColor(.white)
+            
+            HStack(spacing: 12) {
+                Label(batch.semesterId, systemImage: "calendar")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                
+                Label("\(String(batch.year))", systemImage: "clock")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
             }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(batch.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-
-                HStack(spacing: AppTheme.spacingSM) {
-                    Text("Semester: \(batch.semesterId)")
-                    Text("•")
-                    Text("Year: \(batch.year)")
-                }
-                .font(.caption)
-                .foregroundColor(AppTheme.textSecondary)
-            }
-
-            Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(LinearGradient(
+                    colors: [AppTheme.secondary, AppTheme.accent],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+                .shadow(color: AppTheme.secondary.opacity(0.3), radius: 8, y: 4)
+        )
+        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
     }
 }
 
@@ -163,7 +183,7 @@ struct BatchFormView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             Form {
                 Section("Batch Details") {
@@ -199,7 +219,8 @@ struct BatchFormView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle(isEditing ? "Edit Batch" : "Add Batch")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(isEditing ? "Edit Batch" : "Add Batch")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {

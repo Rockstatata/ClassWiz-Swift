@@ -20,10 +20,16 @@ struct LoadingView: View {
                         .scaleEffect(pulseScale)
 
                     // Icon
-                    Image(systemName: "graduationcap.fill")
-                        .font(.system(size: 44))
-                        .foregroundStyle(AppTheme.primaryGradient)
-                        .symbolEffect(.pulse, options: .repeating)
+                    if #available(iOS 17.0, *) {
+                        Image(systemName: "graduationcap.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(AppTheme.primaryGradient)
+                            .symbolEffect(.pulse, options: .repeating)
+                    } else {
+                        Image(systemName: "graduationcap.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(AppTheme.primaryGradient)
+                    }
                 }
 
                 VStack(spacing: AppTheme.spacingSM) {

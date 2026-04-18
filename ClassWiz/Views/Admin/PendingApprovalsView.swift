@@ -87,7 +87,8 @@ struct PendingApprovalsView: View {
                     .padding(.bottom, 24)
             }
         }
-        .navigationTitle("Pending Approvals")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Pending Approvals")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -104,7 +105,7 @@ struct PendingApprovalsView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
-        .onChange(of: viewModel.toastMessage) { _, msg in
+        .onChange(of: viewModel.toastMessage) { msg in
             guard msg != nil else { return }
             withAnimation(AppTheme.quickAnimation) { showToast = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -145,6 +146,7 @@ struct PendingApprovalsView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(AppTheme.spacingXL)
+        .frame(maxHeight: .infinity, alignment: .center)
     }
 
     // MARK: - List
