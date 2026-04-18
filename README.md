@@ -1,109 +1,96 @@
 
-# Classwiz
+# ClassWiz
 
-**An Intelligent Class Routine and Attendance Management System**
-
----
+Intelligent class routine and attendance management platform for students, teachers, and administrators.
 
 ## Table of Contents
 
-1. Project Overview
-2. Motivation
-3. Key Features
-4. User Roles and Capabilities
-5. System Architecture
-6. Technology Stack
-7. Backend Design (Firebase)
-8. Database Schema Overview
-9. Security and Access Control
-10. Offline-First Design
-11. Attendance Intelligence and Analytics
-12. Optional AI Integration
-13. Project Structure
-14. Development Setup
-15. Implementation Roadmap
-16. Evaluation Highlights
-17. Future Enhancements
+- [Executive Summary](#executive-summary)
+- [Problem Statement](#problem-statement)
+- [Goals and Scope](#goals-and-scope)
+- [Key Features](#key-features)
+- [User Roles](#user-roles)
+- [System Architecture](#system-architecture)
+- [Data Model](#data-model)
+- [ER Diagram Placeholder](#er-diagram-placeholder)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment and Configuration](#environment-and-configuration)
+- [Documentation Index](#documentation-index)
+- [Contribution Workflow](#contribution-workflow)
+- [Security Guidelines](#security-guidelines)
+- [Testing and Validation](#testing-and-validation)
+- [Roadmap](#roadmap)
 
----
+## Executive Summary
 
-## 1. Project Overview
+ClassWiz is an iOS-first academic operations app built with SwiftUI and Firebase. It provides a role-based interface for managing routine schedules, recording attendance, and surfacing actionable attendance insights.
 
-Classwiz is a role-based academic management mobile application designed to manage class routines, attendance records, and attendance analytics for students, teachers, and administrators.
+The system is designed with an offline-aware user experience, deterministic analytics logic, and a modular MVVM codebase suitable for iterative team development.
 
-Unlike traditional attendance applications that only record data, Classwiz focuses on **analysis, interpretation, and decision support**, helping users understand attendance requirements, risks, and recovery strategies.
+## Problem Statement
 
-The application is built using **SwiftUI** for iOS and uses **Firebase** as a cloud-based backend with offline-first support.
+Most attendance systems can store records but fail to provide:
 
----
+- Clear risk visibility for students
+- Practical attendance recovery planning
+- Efficient role-specific operations for teachers and admins
+- Reliable behavior under unstable network conditions
 
-## 2. Motivation
+ClassWiz addresses these gaps through guided workflows, analytics, and structured backend access control.
 
-Most academic attendance systems suffer from the following limitations:
+## Goals and Scope
 
-* Attendance is stored but not analyzed
-* Students do not understand eligibility or recovery requirements
-* Teachers manage attendance manually without analytics
-* Administrators lack a centralized system for configuration
-* Mobile connectivity issues are not handled gracefully
+In scope:
 
-Classwiz addresses these problems by combining:
+- Student attendance and routine visibility
+- Teacher attendance operations and schedule support
+- Admin management of courses, routines, batches, and assignments
+- Analytics-oriented attendance experience
+- Firebase-backed authentication and data flow
 
-* Cloud-based APIs
-* Role-based access control
-* Attendance intelligence logic
-* Offline-first mobile computing principles
+Out of scope for current version:
 
----
+- Full institutional ERP integration
+- Multi-tenant enterprise deployment
+- Advanced ML forecasting pipeline
 
-## 3. Key Features
+## Key Features
 
-* Role-based access for Students, Teachers, and Administrators
-* Weekly and semester-based class routine management
-* Secure attendance tracking
-* Attendance percentage calculation and risk classification
-* Attendance leaderboard for classmates (privacy controlled)
-* Teacher class calendar and attendance management
-* Administrative CRUD for courses, routines, and assignments
-* Offline-first support with automatic synchronization
-* Optional AI-powered attendance explanations
+- Role-based access: Student, Teacher, Admin
+- Routine browsing and semester-aware scheduling
+- Attendance marking and record management
+- Attendance risk status and insights
+- Student leaderboard and what-if simulation
+- Admin CRUD operations for core academic entities
+- Offline-aware banners and sync status indicators
 
----
+## User Roles
 
-## 4. User Roles and Capabilities
+Student:
 
-### Student
+- View class routine and attendance history
+- Track attendance risk and trends
+- Use simulation for attendance planning
 
-* View class routine (online and offline)
-* View personal attendance statistics
-* See attendance risk level
-* Compare attendance with classmates (leaderboard)
-* Simulate future absences and eligibility
-* Request attendance correction (optional)
+Teacher:
 
-### Teacher
+- View assigned classes and schedules
+- Mark and update attendance
+- Access teacher-facing course views
 
-* View assigned courses and teaching schedule
-* Mark and manage attendance for assigned classes
-* View course-wise attendance analytics
-* Access a calendar-style class overview
+Admin:
 
-### Administrator
+- Manage courses, batches, routines, and teacher assignments
+- Maintain operational academic setup
 
-* Manage courses (CRUD)
-* Manage batches and semesters
-* Create and update class routines
-* Assign teachers to courses and batches
-* Control system-wide academic configuration
+## System Architecture
 
----
-
-## 5. System Architecture
-
-```
-SwiftUI Mobile Application
+```text
+iOS SwiftUI Client (MVVM)
         |
-        | Firebase SDK (API calls)
+        | Firebase SDK
         v
 Firebase Authentication
         |
@@ -111,241 +98,158 @@ Firebase Authentication
 Cloud Firestore
         |
         v
-Cloud Functions (Validation, Aggregation)
-        |
-        v
-Optional LLM API (Explanation Layer)
+Cloud Functions (validation, rules, aggregation)
 ```
 
-The client application remains lightweight, while security, validation, and aggregation logic are handled by backend services.
+Architecture principles:
 
----
+- Keep UI state in ViewModels
+- Keep network and persistence logic in Services
+- Keep domain data in Models
+- Keep shared helpers in Utilities
 
-## 6. Technology Stack
+## Data Model
 
-### Frontend
+Primary logical entities include:
 
-* Swift
-* SwiftUI
-* MVVM Architecture
-* Combine
+- users
+- batches
+- courses
+- teacherAssignments
+- routines
+- attendance
+- analytics
+- notifications
 
-### Backend
+Typical relationships:
 
-* Firebase Authentication
-* Cloud Firestore
-* Firebase Cloud Functions
-* Firebase Cloud Messaging (optional)
+- One batch has many students
+- One course can have many attendance records
+- One teacher can have many course assignments
+- One student has many attendance entries across courses
 
-### Optional AI
+## ER Diagram Placeholder
 
-* External LLM API (used only for explanation and summaries)
+Use this section to add the final ER diagram.
 
----
+Recommended options:
 
-## 7. Backend Design (Firebase)
+1. Add an exported image and embed it here.
+2. Replace the placeholder Mermaid block below with the final entity map.
 
-Classwiz uses Firebase as a Backend-as-a-Service (BaaS) platform.
-
-### Key Backend Responsibilities
-
-* User authentication and session management
-* Secure data storage and synchronization
-* Role-based authorization
-* Aggregation of attendance analytics
-* Optional AI insight generation
-
-The backend is designed to operate efficiently within the Firebase free plan.
-
----
-
-## 8. Database Schema Overview
-
-Firestore collections include:
-
-```
-users/
-batches/
-courses/
-teacherAssignments/
-routines/
-attendance/
-analytics/
+```mermaid
+erDiagram
+    %% TODO: Replace with final ERD entities and relationships
+    USER ||--o{ ATTENDANCE : has
+    COURSE ||--o{ ATTENDANCE : contains
+    TEACHER ||--o{ TEACHER_ASSIGNMENT : assigned
+    COURSE ||--o{ TEACHER_ASSIGNMENT : mapped
+    BATCH ||--o{ ROUTINE : schedules
 ```
 
-### Design Principles
+If you prefer image-based ERD, place the file under `ClassWiz/Docs` and embed it below this heading.
 
-* Denormalized reads for performance
-* Append-only attendance records
-* Derived analytics stored separately
-* Predictable query patterns
+## Tech Stack
 
----
+Frontend:
 
-## 9. Security and Access Control
+- Swift
+- SwiftUI
+- MVVM
+- Combine (where needed)
 
-Security is enforced using Firestore security rules.
+Backend:
 
-### Access Control Summary
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Cloud Functions
 
-* Students can read only their own attendance data
-* Students can read aggregated leaderboard data
-* Teachers can write attendance only for assigned courses
-* Administrators have full CRUD access
+## Project Structure
 
-All sensitive operations are validated server-side using Cloud Functions.
-
----
-
-## 10. Offline-First Design
-
-Classwiz is designed using mobile computing principles.
-
-### Offline Capabilities
-
-* Cached routines and attendance data
-* Read access available without network
-* Automatic synchronization on reconnect
-* Visual indication of last sync time
-
-Writes are restricted or queued appropriately when offline.
-
----
-
-## 11. Attendance Intelligence and Analytics
-
-Attendance intelligence is implemented using deterministic logic, not AI.
-
-### Features
-
-* Attendance percentage calculation
-* Risk classification:
-
-  * Safe (≥80%)
-  * Warning (75–79%)
-  * Critical (<75%)
-* Recovery calculation:
-
-  * Minimum required future attendance
-* Attendance trend visualization
-* Semester-wise performance comparison
-
-These features provide decision support rather than raw data.
-
----
-
-## 12. Optional AI Integration
-
-AI is used strictly as an **explanation layer**.
-
-### Approved Use Cases
-
-* Natural language explanation of attendance status
-* Personalized recovery summaries
-* Routine summaries
-
-### Important Principle
-
-All academic rules and calculations are performed by deterministic logic.
-The AI never makes academic decisions.
-
-AI requests are handled through backend Cloud Functions to ensure security and cost control.
-
----
-
-## 13. Project Structure
-
-```
-Classwiz/
-├── App/
-├── Core/
-├── Services/
-├── Models/
-├── ViewModels/
-├── Views/
-├── Utilities/
-├── Resources/
-└── PreviewData/
+```text
+ClassWiz/
+  App/
+  Core/
+  Models/
+  Services/
+  Utilities/
+  ViewModels/
+  Views/
+  Resources/
+  PreviewData/
+  Docs/
 ```
 
-This structure follows MVVM and clean architecture principles, separating UI, logic, and backend interaction.
+## Getting Started
 
----
+Prerequisites:
 
-## 14. Development Setup
+- macOS with current Xcode
+- iOS simulator or iOS device
+- Firebase project with Auth + Firestore enabled
 
-### Prerequisites
+Setup steps:
 
-* Xcode (iOS 16+)
-* Apple Developer Account (free tier)
-* Firebase Project
+1. Clone repository.
+2. Open [ClassWiz.xcodeproj](ClassWiz.xcodeproj).
+3. Add [ClassWiz/GoogleService-Info.plist](ClassWiz/GoogleService-Info.plist) to the app target.
+4. Configure Firebase settings in console.
+5. Build and run.
 
-### Setup Steps
+## Environment and Configuration
 
-1. Clone the repository
-2. Open the project in Xcode
-3. Configure Firebase and add `GoogleService-Info.plist`
-4. Enable Authentication and Firestore in Firebase Console
-5. Run the project on simulator or device
+- Never commit local `.env` files.
+- Keep sensitive values outside tracked source files.
+- Validate Firebase project bindings before release testing.
 
----
+## Documentation Index
 
-## 15. Implementation Roadmap
+Product and technical docs:
 
-### Phase 1
+- [ClassWiz/Docs/app-prd.md](ClassWiz/Docs/app-prd.md)
+- [ClassWiz/Docs/backend-prd.md](ClassWiz/Docs/backend-prd.md)
+- [ClassWiz/Docs/frontend-prd.md](ClassWiz/Docs/frontend-prd.md)
+- [ClassWiz/Docs/project-architecture.md](ClassWiz/Docs/project-architecture.md)
+- [ClassWiz/Docs/workflows-and-ui.md](ClassWiz/Docs/workflows-and-ui.md)
 
-* Authentication
-* Role-based routing
-* Student routine and attendance view
+Team and process docs:
 
-### Phase 2
+- [ClassWiz/Docs/Maruf-Work-Detailed.md](ClassWiz/Docs/Maruf-Work-Detailed.md)
+- [ClassWiz/Docs/Sarwad-Work-Detailed.md](ClassWiz/Docs/Sarwad-Work-Detailed.md)
+- [ClassWiz/Docs/Zisan-Work-Detailed.md](ClassWiz/Docs/Zisan-Work-Detailed.md)
+- [ClassWiz/Docs/Swift-Commits.md](ClassWiz/Docs/Swift-Commits.md)
+- [ClassWiz/Docs/admin-workflow.md](ClassWiz/Docs/admin-workflow.md)
+- [ClassWiz/Docs/team-sync-guide-zisan-maruf-sarwad.md](ClassWiz/Docs/team-sync-guide-zisan-maruf-sarwad.md)
 
-* Teacher attendance management
-* Attendance intelligence logic
-* Leaderboard feature
+## Contribution Workflow
 
-### Phase 3
+1. Sync with main branch.
+2. Create a focused branch per task.
+3. Keep commits small and meaningful.
+4. Open PR with clear summary and risk notes.
+5. Rebase or merge latest main before final merge.
 
-* Admin CRUD operations
-* Security rules enforcement
-* Offline-first optimization
+Current team coordination details live in [ClassWiz/Docs/team-sync-guide-zisan-maruf-sarwad.md](ClassWiz/Docs/team-sync-guide-zisan-maruf-sarwad.md).
 
-### Phase 4
+## Security Guidelines
 
-* UI polish
-* Error handling
-* Optional AI integration
+- Do not commit secrets.
+- Commit [ClassWiz/GoogleService-Info.plist](ClassWiz/GoogleService-Info.plist) only if repository policy allows it.
+- Enforce role checks in backend rules and server-side logic.
 
----
+## Testing and Validation
 
-## 16. Evaluation Highlights
+Recommended checks before PR:
 
-This project demonstrates:
+- App launches successfully for all primary roles
+- Attendance write/read flows work correctly
+- Offline indicators and reconnect behavior are sane
+- No accidental secret files are staged
 
-* API-driven cloud architecture
-* Offline-first mobile computing design
-* Role-based system modeling
-* Full CRUD backend configuration
-* Analytics and predictive logic
-* Secure and scalable backend design
-* Responsible and limited AI usage
+## Roadmap
 
----
-
-## 17. Future Enhancements
-
-* GPA correlation with attendance
-* Institutional ERP integration
-* Cross-department analytics
-* Web dashboard for administrators
-* Push notification automation
-* Multi-university support
-
----
-
-## Conclusion
-
-Classwiz is a complete academic management and decision-support system that goes beyond traditional attendance tracking. By combining cloud APIs, mobile-first design, analytics, and secure access control, it provides a realistic and scalable solution to academic attendance management.
-
----
+- Improve cross-role UX consistency
+- Expand attendance analytics depth
+- Improve sync/conflict handling
+- Add broader automated test coverage
 
