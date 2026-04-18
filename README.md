@@ -12,7 +12,7 @@ Intelligent class routine and attendance management platform for students, teach
 - [User Roles](#user-roles)
 - [System Architecture](#system-architecture)
 - [Data Model](#data-model)
-- [ER Diagram Placeholder](#er-diagram-placeholder)
+- [ER Diagram](#er-diagram)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -128,26 +128,14 @@ Typical relationships:
 - One teacher can have many course assignments
 - One student has many attendance entries across courses
 
-## ER Diagram Placeholder
+## ER Diagram 
 
-Use this section to add the final ER diagram.
+The current database ER diagram is shown below.
 
-Recommended options:
+![ClassWiz ER Diagram](image/image.png)
 
-1. Add an exported image and embed it here.
-2. Replace the placeholder Mermaid block below with the final entity map.
 
-```mermaid
-erDiagram
-    %% TODO: Replace with final ERD entities and relationships
-    USER ||--o{ ATTENDANCE : has
-    COURSE ||--o{ ATTENDANCE : contains
-    TEACHER ||--o{ TEACHER_ASSIGNMENT : assigned
-    COURSE ||--o{ TEACHER_ASSIGNMENT : mapped
-    BATCH ||--o{ ROUTINE : schedules
-```
 
-If you prefer image-based ERD, place the file under `ClassWiz/Docs` and embed it below this heading.
 
 ## Tech Stack
 
