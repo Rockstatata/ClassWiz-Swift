@@ -1,3 +1,5 @@
+> _Last updated: April 8, 2026. Verified against actual project implementation._
+
 # 📘 BACKEND & DATABASE PRD
 
 ## Project: **Classwiz**
