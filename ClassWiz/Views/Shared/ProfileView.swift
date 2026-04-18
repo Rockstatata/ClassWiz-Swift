@@ -11,48 +11,34 @@ struct ProfileView: View {
     @State private var headerAppeared = false
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.background.ignoresSafeArea()
+        ClassWizScreen(title: "Profile", subtitle: "Manage your account", showProfile: false, showBackButton: true, scrollable: true) {
+            VStack(spacing: 20) {
+                profileHeader
+                    .opacity(headerAppeared ? 1 : 0)
+                    .offset(y: headerAppeared ? 0 : -16)
 
-                // Subtle top gradient wash
-                LinearGradient(
-                    colors: [AppTheme.primary.opacity(0.08), AppTheme.background],
-                    startPoint: .top, endPoint: .init(x: 0.5, y: 0.35)
-                )
-                .ignoresSafeArea()
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        profileHeader
-                            .opacity(headerAppeared ? 1 : 0)
-                            .offset(y: headerAppeared ? 0 : -16)
-
-                        accountSection
-                        appearanceSection
-                        syncSection
-                        signOutSection
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 40)
-                }
+                accountSection
+                featuresSection
+                appearanceSection
+                syncSection
+                signOutSection
             }
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.large)
-            .alert("Sign Out", isPresented: $showSignOutConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button("Sign Out", role: .destructive) {
-                    authViewModel.signOut(appState: appState)
-                }
-            } message: {
-                Text("Are you sure you want to sign out?")
+            .padding(.horizontal, 4)
+            .padding(.top, 12)
+            .padding(.bottom, 40)
+        }
+        .alert("Sign Out", isPresented: $showSignOutConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Sign Out", role: .destructive) {
+                authViewModel.signOut(appState: appState)
             }
-            .task { await loadBatchName() }
-            .onAppear {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05)) {
-                    headerAppeared = true
-                }
+        } message: {
+            Text("Are you sure you want to sign out?")
+        }
+        .task { await loadBatchName() }
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05)) {
+                headerAppeared = true
             }
         }
     }
@@ -136,6 +122,37 @@ struct ProfileView: View {
                 settingsDivider
                 settingsRow(icon: "calendar", iconColor: .orange, label: "Member since",
                             value: date.formatted(date: .abbreviated, time: .omitted))
+            }
+        }
+    }
+
+    // MARK: - Features Section
+
+    private var featuresSection: some View {
+        Group {
+            if appState.currentUser?.role == .student {
+                settingsSection(title: "Student Features") {
+                    NavigationLink(destination: StudentCoursesAndClassesView()) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(AppTheme.primary.opacity(0.12))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: "book.pages.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(AppTheme.primary)
+                            }
+                            Text("Track Courses & Classes")
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .padding(.vertical, 10)
+                    }
+                }
             }
         }
     }
