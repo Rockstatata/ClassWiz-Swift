@@ -101,6 +101,12 @@ Cloud Firestore
 Cloud Functions (validation, rules, aggregation)
 ```
 
+### System Architecture Diagram Position
+
+System architecture diagram:
+
+![ClassWiz System Architecture](image/systemarch.png)
+
 Architecture principles:
 
 - Keep UI state in ViewModels
@@ -197,6 +203,7 @@ Product and technical docs:
 - [ClassWiz/Docs/app-prd.md](ClassWiz/Docs/app-prd.md)
 - [ClassWiz/Docs/backend-prd.md](ClassWiz/Docs/backend-prd.md)
 - [ClassWiz/Docs/frontend-prd.md](ClassWiz/Docs/frontend-prd.md)
+- [ClassWiz/Docs/project-report.md](ClassWiz/Docs/project-report.md)
 - [ClassWiz/Docs/project-architecture.md](ClassWiz/Docs/project-architecture.md)
 - [ClassWiz/Docs/workflows-and-ui.md](ClassWiz/Docs/workflows-and-ui.md)
 
