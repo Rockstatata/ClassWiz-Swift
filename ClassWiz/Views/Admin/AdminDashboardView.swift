@@ -18,29 +18,25 @@ final class AdminDashboardViewModel: ObservableObject {
     func loadDashboard() async {
         isLoading = true
 
-        do {
-            async let usersTask = UserService.shared.fetchAllUsers()
-            async let coursesTask = CourseService.shared.fetchAll()
-            async let batchesTask = BatchService.shared.fetchAll()
-            async let routinesTask = RoutineService.shared.fetchAll()
-            async let assignmentsTask = TeacherAssignmentService.shared.fetchAll()
+        async let usersTask = UserService.shared.fetchAllUsers()
+        async let coursesTask = CourseService.shared.fetchAll()
+        async let batchesTask = BatchService.shared.fetchAll()
+        async let routinesTask = RoutineService.shared.fetchAll()
+        async let assignmentsTask = TeacherAssignmentService.shared.fetchAll()
 
-            let users = try await usersTask
-            let courses = try await coursesTask
-            let batches = try await batchesTask
-            let routines = try await routinesTask
-            let assignments = try await assignmentsTask
+        let users = (try? await usersTask) ?? []
+        let courses = (try? await coursesTask) ?? []
+        let batches = (try? await batchesTask) ?? []
+        let routines = (try? await routinesTask) ?? []
+        let assignments = (try? await assignmentsTask) ?? []
 
-            totalUsers = users.count
-            totalStudents = users.filter { $0.role == .student }.count
-            totalTeachers = users.filter { $0.role == .teacher }.count
-            totalCourses = courses.count
-            totalBatches = batches.count
-            totalRoutines = routines.count
-            totalAssignments = assignments.count
-        } catch {
-            // silent
-        }
+        totalUsers = users.count
+        totalStudents = users.filter { $0.role == .student }.count
+        totalTeachers = users.filter { $0.role == .teacher }.count
+        totalCourses = courses.count
+        totalBatches = batches.count
+        totalRoutines = routines.count
+        totalAssignments = assignments.count
 
         isLoading = false
     }
@@ -56,47 +52,35 @@ struct AdminDashboardView: View {
     ]
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.background.ignoresSafeArea()
+        ClassWizScreen(title: "Admin Dashboard", subtitle: "System Overview", scrollable: true) {
+            if viewModel.isLoading {
+                ProgressView().tint(AppTheme.primary)
+            } else {
+                VStack(spacing: AppTheme.spacingMD) {
+                    // Greeting
+                    greetingSection
 
-                if viewModel.isLoading {
-                    ProgressView().tint(AppTheme.primary)
-                } else {
-                    ScrollView {
-                        VStack(spacing: AppTheme.spacingMD) {
-                            // Greeting
-                            greetingSection
-
-                            // Stats Grid
-                            LazyVGrid(columns: columns, spacing: AppTheme.spacingMD) {
-                                adminStatCard(icon: "person.3.fill", value: "\(viewModel.totalStudents)", label: "Students", color: AppTheme.primary)
-                                adminStatCard(icon: "person.crop.rectangle.fill", value: "\(viewModel.totalTeachers)", label: "Teachers", color: AppTheme.secondary)
-                                adminStatCard(icon: "book.fill", value: "\(viewModel.totalCourses)", label: "Courses", color: AppTheme.accent)
-                                adminStatCard(icon: "building.2.fill", value: "\(viewModel.totalBatches)", label: "Batches", color: AppTheme.warning)
-                                adminStatCard(icon: "clock.fill", value: "\(viewModel.totalRoutines)", label: "Routines", color: AppTheme.safe)
-                                adminStatCard(icon: "link", value: "\(viewModel.totalAssignments)", label: "Assignments", color: AppTheme.critical)
-                            }
-
-                            // Quick Actions
-                            quickActions
-                        }
-                        .padding(AppTheme.spacingMD)
+                    // Stats Grid
+                    LazyVGrid(columns: columns, spacing: AppTheme.spacingMD) {
+                        adminStatCard(icon: "person.3.fill", value: "\(viewModel.totalStudents)", label: "Students", color: AppTheme.primary)
+                        adminStatCard(icon: "person.crop.rectangle.fill", value: "\(viewModel.totalTeachers)", label: "Teachers", color: AppTheme.secondary)
+                        adminStatCard(icon: "book.fill", value: "\(viewModel.totalCourses)", label: "Courses", color: AppTheme.accent)
+                        adminStatCard(icon: "building.2.fill", value: "\(viewModel.totalBatches)", label: "Batches", color: AppTheme.warning)
+                        adminStatCard(icon: "clock.fill", value: "\(viewModel.totalRoutines)", label: "Routines", color: AppTheme.safe)
+                        adminStatCard(icon: "link", value: "\(viewModel.totalAssignments)", label: "Assignments", color: AppTheme.critical)
                     }
+
+                    // Quick Actions
+                    quickActions
                 }
+                .padding(.bottom, AppTheme.spacingMD)
             }
-            .navigationTitle("Admin Dashboard")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    SyncStatusBar()
-                }
-            }
-            .refreshable {
-                await viewModel.loadDashboard()
-            }
-            .task {
-                await viewModel.loadDashboard()
-            }
+        }
+        .refreshable {
+            await viewModel.loadDashboard()
+        }
+        .task {
+            await viewModel.loadDashboard()
         }
     }
 

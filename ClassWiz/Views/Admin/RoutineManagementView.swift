@@ -89,10 +89,8 @@ struct RoutineManagementView: View {
     @State private var showAddForm = false
 
     var body: some View {
-        NavigationStack {
+        ClassWizScreen(title: "Routines", subtitle: "Manage class schedules", scrollable: false) {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
-
                 VStack(spacing: 0) {
                     daySelector
 
@@ -127,42 +125,54 @@ struct RoutineManagementView: View {
                                     }
                                 }
                             }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
                     }
                 }
-            }
-            .navigationTitle("Routines")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showAddForm = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(AppTheme.primary)
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            showAddForm = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title2.weight(.bold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(AppTheme.primaryGradient)
+                                .clipShape(Circle())
+                                .shadow(color: AppTheme.primary.opacity(0.4), radius: 10, x: 0, y: 5)
+                        }
+                        .padding(.trailing, 24)
+                        .padding(.bottom, 24)
                     }
                 }
             }
-            .sheet(isPresented: $showAddForm) {
-                NavigationStack {
-                    RoutineFormView(
-                        mode: .add,
-                        courses: viewModel.courses,
-                        batches: viewModel.batches,
-                        teachers: viewModel.teachers
-                    ) {
-                        showAddForm = false
-                        Task { await viewModel.loadRoutines() }
-                    }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .sheet(isPresented: $showAddForm) {
+            NavigationStack {
+                RoutineFormView(
+                    mode: .add,
+                    courses: viewModel.courses,
+                    batches: viewModel.batches,
+                    teachers: viewModel.teachers
+                ) {
+                    showAddForm = false
+                    Task { await viewModel.loadRoutines() }
                 }
             }
-            .refreshable {
-                await viewModel.loadRoutines()
-            }
-            .task {
-                await viewModel.loadRoutines()
-            }
+        }
+        .refreshable {
+            await viewModel.loadRoutines()
+        }
+        .task {
+            await viewModel.loadRoutines()
         }
     }
 
@@ -286,7 +296,7 @@ struct RoutineFormView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea(edges: .all)
 
             Form {
                 Section("Class Details") {
@@ -373,7 +383,8 @@ struct RoutineFormView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle(isEditing ? "Edit Routine" : "Add Routine")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(isEditing ? "Edit Routine" : "Add Routine")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
