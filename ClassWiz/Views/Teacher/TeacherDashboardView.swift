@@ -24,65 +24,60 @@ final class TeacherDashboardViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        do {
-            async let assignmentsTask = TeacherAssignmentService.shared.fetchAssignments(forTeacher: teacherId)
-            async let routinesTask = RoutineService.shared.fetchRoutines(forTeacher: teacherId)
-            async let coursesTask = CourseService.shared.fetchAll()
-            async let batchesTask = BatchService.shared.fetchAll()
+        async let assignmentsTask = TeacherAssignmentService.shared.fetchAssignments(forTeacher: teacherId)
+        async let routinesTask = RoutineService.shared.fetchRoutines(forTeacher: teacherId)
+        async let coursesTask = CourseService.shared.fetchAll()
+        async let batchesTask = BatchService.shared.fetchAll()
 
-            let rawAssignments = try await assignmentsTask
-            let routines = try await routinesTask
-            let courses = try await coursesTask
-            let batches = try await batchesTask
+        let rawAssignments = (try? await assignmentsTask) ?? []
+        let routines = (try? await routinesTask) ?? []
+        let courses = (try? await coursesTask) ?? []
+        let batches = (try? await batchesTask) ?? []
 
-            let courseMap = Dictionary(uniqueKeysWithValues: courses.compactMap { c -> (String, Course)? in
-                guard let id = c.id else { return nil }
-                return (id, c)
-            })
-            let batchMap = Dictionary(uniqueKeysWithValues: batches.compactMap { b -> (String, Batch)? in
-                guard let id = b.id else { return nil }
-                return (id, b)
-            })
+        let courseMap = Dictionary(uniqueKeysWithValues: courses.compactMap { c -> (String, Course)? in
+            guard let id = c.id else { return nil }
+            return (id, c)
+        })
+        let batchMap = Dictionary(uniqueKeysWithValues: batches.compactMap { b -> (String, Batch)? in
+            guard let id = b.id else { return nil }
+            return (id, b)
+        })
 
-            assignments = rawAssignments.compactMap { a -> TeacherAssignmentDisplay? in
-                guard let id = a.id else { return nil }
-                return TeacherAssignmentDisplay(
-                    id: id,
-                    assignment: a,
-                    courseName: courseMap[a.courseId]?.name ?? "Unknown",
-                    courseCode: courseMap[a.courseId]?.code ?? "",
-                    batchName: batchMap[a.batchId]?.name ?? "Unknown"
+        assignments = rawAssignments.compactMap { a -> TeacherAssignmentDisplay? in
+            guard let id = a.id else { return nil }
+            return TeacherAssignmentDisplay(
+                id: id,
+                assignment: a,
+                courseName: courseMap[a.courseId]?.name ?? "Unknown",
+                courseCode: courseMap[a.courseId]?.code ?? "",
+                batchName: batchMap[a.batchId]?.name ?? "Unknown"
+            )
+        }
+
+            // Today's routines
+        let today = Weekday.today
+        todayRoutines = routines
+            .filter { $0.day == today }
+            .sorted { $0.startTime < $1.startTime }
+            .map { routine in
+                RoutineDisplayItem(
+                    id: routine.id ?? UUID().uuidString,
+                    routine: routine,
+                    courseName: courseMap[routine.courseId]?.name ?? "Unknown",
+                    courseCode: courseMap[routine.courseId]?.code ?? "",
+                    teacherName: "",
+                    isActive: routine.isCurrentlyActive
                 )
             }
 
-            // Today's routines
-            let today = Weekday.today
-            todayRoutines = routines
-                .filter { $0.day == today }
-                .sorted { $0.startTime < $1.startTime }
-                .map { routine in
-                    RoutineDisplayItem(
-                        id: routine.id ?? UUID().uuidString,
-                        routine: routine,
-                        courseName: courseMap[routine.courseId]?.name ?? "Unknown",
-                        courseCode: courseMap[routine.courseId]?.code ?? "",
-                        teacherName: "",
-                        isActive: routine.isCurrentlyActive
-                    )
-                }
-
-            // Count unique batches for student count
-            let batchIds = Set(rawAssignments.map(\.batchId))
-            var count = 0
-            for batchId in batchIds {
-                let students = try await UserService.shared.fetchStudents(inBatch: batchId)
-                count += students.count
-            }
-            totalStudents = count
-
-        } catch {
-            errorMessage = error.localizedDescription
+        // Count unique batches for student count
+        let batchIds = Set(rawAssignments.map(\.batchId))
+        var count = 0
+        for batchId in batchIds {
+            let students = (try? await UserService.shared.fetchStudents(inBatch: batchId)) ?? []
+            count += students.count
         }
+        totalStudents = count
 
         isLoading = false
     }
@@ -93,37 +88,25 @@ struct TeacherDashboardView: View {
     @StateObject private var viewModel = TeacherDashboardViewModel()
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.background.ignoresSafeArea()
-
-                if viewModel.isLoading {
-                    ProgressView()
-                        .tint(AppTheme.primary)
-                } else {
-                    ScrollView {
-                        VStack(spacing: AppTheme.spacingMD) {
-                            greetingCard
-                            statsGrid
-                            todaySection
-                            assignmentsSection
-                        }
-                        .padding(AppTheme.spacingMD)
-                    }
+        ClassWizScreen(title: "Dashboard", subtitle: "Welcome back", scrollable: true) {
+            if viewModel.isLoading {
+                ProgressView()
+                    .tint(AppTheme.primary)
+            } else {
+                VStack(spacing: AppTheme.spacingMD) {
+                    greetingCard
+                    statsGrid
+                    todaySection
+                    assignmentsSection
                 }
+                .padding(.bottom, AppTheme.spacingMD)
             }
-            .navigationTitle("Dashboard")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    SyncStatusBar()
-                }
-            }
-            .refreshable {
-                await loadData()
-            }
-            .task {
-                await loadData()
-            }
+        }
+        .refreshable {
+            await loadData()
+        }
+        .task {
+            await loadData()
         }
     }
 
@@ -265,62 +248,66 @@ struct TeacherRoutineRow: View {
     let item: RoutineDisplayItem
 
     var body: some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            // Time column
-            VStack(spacing: 2) {
-                Text(DateFormatters.formatTime(item.routine.startTime))
-                    .font(.caption.weight(.semibold))
-                Text(DateFormatters.formatTime(item.routine.endTime))
-                    .font(.caption2)
-                    .foregroundColor(AppTheme.textSecondary)
-            }
-            .frame(width: 60)
-
-            // Accent line
-            RoundedRectangle(cornerRadius: 2)
-                .fill(item.isActive ? AppTheme.safe : AppTheme.primary)
-                .frame(width: 3, height: 40)
-
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
                 Text(item.courseName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-
-                HStack(spacing: AppTheme.spacingSM) {
-                    Label(item.routine.room.isEmpty ? "TBA" : item.routine.room, systemImage: "mappin")
-                    Text("•")
-                    Text(item.courseCode)
-                }
-                .font(.caption)
-                .foregroundColor(AppTheme.textSecondary)
-            }
-
-            Spacer()
-
-            if item.isActive {
-                Text("LIVE")
-                    .font(.caption2.weight(.bold))
+                    .font(.title3.weight(.bold))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(AppTheme.safe))
-            } else {
-                Image(systemName: "pencil.circle.fill")
-                    .font(.title3)
-                    .foregroundColor(AppTheme.primary)
+                    .lineLimit(2)
+                
+                Spacer()
+                
+                if item.isActive {
+                    Text("LIVE")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white)
+                        .foregroundColor(AppTheme.safe)
+                        .clipShape(Capsule())
+                }
             }
+            
+            Text(item.courseCode)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(.white.opacity(0.9))
+            
+            HStack(spacing: 12) {
+                Label(item.routine.timeSlot, systemImage: "clock.fill")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                
+                Label(item.routine.room.isEmpty ? "TBA" : item.routine.room, systemImage: "mappin.and.ellipse")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
+            
+            Label(item.teacherName, systemImage: "person.fill")
+                .font(.caption.weight(.medium))
+                .foregroundColor(.white.opacity(0.9))
         }
-        .cwCard()
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(LinearGradient(
+                    colors: item.isActive ? [AppTheme.safe, AppTheme.secondary] : [AppTheme.secondary, AppTheme.accent],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+                .shadow(color: (item.isActive ? AppTheme.safe : AppTheme.secondary).opacity(0.4), radius: 10, y: 5)
+        )
+        .padding(.vertical, 6)
     }
 }
 
-#Preview("Teacher Dashboard") {
-    TeacherDashboardView()
-        .environmentObject(MockData.makeTeacherAppState())
-}
+// MARK: - Teacher Assignments View
 
-#Preview("Teacher Routine Row") {
-    TeacherRoutineRow(item: MockData.routineDisplayItems[0])
-        .padding()
-        .background(AppTheme.background)
-}
