@@ -17,40 +17,36 @@ final class TeacherScheduleViewModel: ObservableObject {
     func loadRoutines(teacherId: String) async {
         isLoading = true
 
-        do {
-            async let routinesTask = RoutineService.shared.fetchRoutines(forTeacher: teacherId)
-            async let coursesTask = CourseService.shared.fetchAll()
-            async let batchesTask = BatchService.shared.fetchAll()
+        async let routinesTask = RoutineService.shared.fetchRoutines(forTeacher: teacherId)
+        async let coursesTask = CourseService.shared.fetchAll()
+        async let batchesTask = BatchService.shared.fetchAll()
 
-            let routines = try await routinesTask
-            let courses = try await coursesTask
-            let batches = try await batchesTask
+        let routines = (try? await routinesTask) ?? []
+        let courses = (try? await coursesTask) ?? []
+        let batches = (try? await batchesTask) ?? []
 
-            let courseMap = Dictionary(uniqueKeysWithValues: courses.compactMap { c -> (String, Course)? in
-                guard let id = c.id else { return nil }
-                return (id, c)
-            })
-            let batchMap = Dictionary(uniqueKeysWithValues: batches.compactMap { b -> (String, Batch)? in
-                guard let id = b.id else { return nil }
-                return (id, b)
-            })
+        let courseMap = Dictionary(uniqueKeysWithValues: courses.compactMap { c -> (String, Course)? in
+            guard let id = c.id else { return nil }
+            return (id, c)
+        })
+        let batchMap = Dictionary(uniqueKeysWithValues: batches.compactMap { b -> (String, Batch)? in
+            guard let id = b.id else { return nil }
+            return (id, b)
+        })
 
-            var grouped: [Weekday: [RoutineDisplayItem]] = [:]
-            for routine in routines {
-                let item = RoutineDisplayItem(
-                    id: routine.id ?? UUID().uuidString,
-                    routine: routine,
-                    courseName: courseMap[routine.courseId]?.name ?? "Unknown",
-                    courseCode: courseMap[routine.courseId]?.code ?? "",
-                    teacherName: batchMap[routine.batchId]?.name ?? "",
-                    isActive: routine.isCurrentlyActive
-                )
-                grouped[routine.day, default: []].append(item)
-            }
-            routinesByDay = grouped
-        } catch {
-            // Silent fail - offline cache may be empty
+        var grouped: [Weekday: [RoutineDisplayItem]] = [:]
+        for routine in routines {
+            let item = RoutineDisplayItem(
+                id: routine.id ?? UUID().uuidString,
+                routine: routine,
+                courseName: courseMap[routine.courseId]?.name ?? "Unknown",
+                courseCode: courseMap[routine.courseId]?.code ?? "",
+                teacherName: batchMap[routine.batchId]?.name ?? "",
+                isActive: routine.isCurrentlyActive
+            )
+            grouped[routine.day, default: []].append(item)
         }
+        routinesByDay = grouped
 
         isLoading = false
     }
@@ -61,49 +57,44 @@ struct TeacherScheduleView: View {
     @StateObject private var viewModel = TeacherScheduleViewModel()
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.background.ignoresSafeArea()
+        ClassWizScreen(title: "My Schedule", subtitle: "Manage your classes", scrollable: false) {
+            VStack(spacing: 0) {
+                daySelector
 
-                VStack(spacing: 0) {
-                    daySelector
-
-                    if viewModel.isLoading {
-                        Spacer()
-                        ProgressView().tint(AppTheme.primary)
-                        Spacer()
-                    } else if viewModel.currentDayRoutines.isEmpty {
-                        Spacer()
-                        EmptyStateView(
-                            icon: "calendar.badge.exclamationmark",
-                            title: "No Classes",
-                            subtitle: "No classes scheduled for \(viewModel.selectedDay.rawValue)."
-                        )
-                        Spacer()
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: AppTheme.spacingMD) {
-                                ForEach(viewModel.currentDayRoutines) { item in
-                                    NavigationLink(destination: AttendanceMarkingView(routine: item)) {
-                                        TeacherRoutineRow(item: item)
-                                    }
-                                    .buttonStyle(.plain)
+                if viewModel.isLoading {
+                    Spacer()
+                    ProgressView().tint(AppTheme.primary)
+                    Spacer()
+                } else if viewModel.currentDayRoutines.isEmpty {
+                    Spacer()
+                    EmptyStateView(
+                        icon: "calendar.badge.exclamationmark",
+                        title: "No Classes",
+                        subtitle: "No classes scheduled for \(viewModel.selectedDay.rawValue)."
+                    )
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: AppTheme.spacingMD) {
+                            ForEach(viewModel.currentDayRoutines) { item in
+                                NavigationLink(destination: AttendanceMarkingView(routine: item)) {
+                                    TeacherRoutineRow(item: item)
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .padding(AppTheme.spacingMD)
                         }
+                        .padding(AppTheme.spacingMD)
                     }
                 }
             }
-            .navigationTitle("My Schedule")
             .refreshable {
                 guard let user = appState.currentUser else { return }
                 await viewModel.loadRoutines(teacherId: user.id)
             }
-            .task {
-                guard let user = appState.currentUser else { return }
-                await viewModel.loadRoutines(teacherId: user.id)
-            }
+        }
+        .task {
+            guard let user = appState.currentUser else { return }
+            await viewModel.loadRoutines(teacherId: user.id)
         }
     }
 

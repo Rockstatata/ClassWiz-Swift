@@ -7,35 +7,36 @@ struct TeacherTabView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedTab = 0
 
+    let tabs: [CWTabBarItem] = [
+        CWTabBarItem(id: 0, title: "Dashboard", icon: "house", selectedIcon: "house.fill"),
+        CWTabBarItem(id: 1, title: "Schedule", icon: "calendar", selectedIcon: "calendar"),
+        CWTabBarItem(id: 2, title: "Courses", icon: "book", selectedIcon: "book.fill"),
+        CWTabBarItem(id: 3, title: "Tasks", icon: "doc.text", selectedIcon: "doc.text.fill"),
+       
+    ]
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            TeacherDashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "house.fill")
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                switch selectedTab {
+                case 0:
+                    TeacherDashboardView()
+                case 1:
+                    TeacherScheduleView()
+                case 2:
+                    TeacherCoursesView()
+                case 3:
+                    TeacherAssignmentsView()	
+                default:
+                    EmptyView()
                 }
-                .tag(0)
-
-            TeacherScheduleView()
-                .tabItem {
-                    Label("Schedule", systemImage: "calendar")
-                }
-                .tag(1)
-
-            TeacherCoursesView()
-                .tabItem {
-                    Label("Courses", systemImage: "book.fill")
-                }
-                .tag(2)
-
-            ProfileView()
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle")
-                }
-                .tag(3)
-        }
-        .tint(AppTheme.primary)
-        .onChange(of: selectedTab) { _, _ in
-            HapticManager.selection()
+                
+                ClassWizTabBar(items: tabs, selection: $selectedTab)
+            }
+            .ignoresSafeArea(.keyboard)
+            .onChange(of: selectedTab) { _ in
+                HapticManager.selection()
+            }
         }
     }
 }

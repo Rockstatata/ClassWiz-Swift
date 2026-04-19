@@ -12,32 +12,28 @@ final class TeacherAnalyticsViewModel: ObservableObject {
     func loadCourses(teacherId: String) async {
         isLoading = true
 
-        do {
-            let assignments = try await TeacherAssignmentService.shared.fetchAssignments(forTeacher: teacherId)
-            let courses = try await CourseService.shared.fetchAll()
-            let batches = try await BatchService.shared.fetchAll()
+        let assignments = (try? await TeacherAssignmentService.shared.fetchAssignments(forTeacher: teacherId)) ?? []
+        let courses = (try? await CourseService.shared.fetchAll()) ?? []
+        let batches = (try? await BatchService.shared.fetchAll()) ?? []
 
-            let courseMap = Dictionary(uniqueKeysWithValues: courses.compactMap { c -> (String, Course)? in
-                guard let id = c.id else { return nil }
-                return (id, c)
-            })
-            let batchMap = Dictionary(uniqueKeysWithValues: batches.compactMap { b -> (String, Batch)? in
-                guard let id = b.id else { return nil }
-                return (id, b)
-            })
+        let courseMap = Dictionary(uniqueKeysWithValues: courses.compactMap { c -> (String, Course)? in
+            guard let id = c.id else { return nil }
+            return (id, c)
+        })
+        let batchMap = Dictionary(uniqueKeysWithValues: batches.compactMap { b -> (String, Batch)? in
+            guard let id = b.id else { return nil }
+            return (id, b)
+        })
 
-            courseAssignments = assignments.compactMap { a -> (TeacherAssignmentDisplay)? in
-                guard let id = a.id else { return nil }
-                return TeacherAssignmentDisplay(
-                    id: id,
-                    assignment: a,
-                    courseName: courseMap[a.courseId]?.name ?? "Unknown",
-                    courseCode: courseMap[a.courseId]?.code ?? "",
-                    batchName: batchMap[a.batchId]?.name ?? "Unknown"
-                )
-            }
-        } catch {
-            // silent
+        courseAssignments = assignments.compactMap { a -> (TeacherAssignmentDisplay)? in
+            guard let id = a.id else { return nil }
+            return TeacherAssignmentDisplay(
+                id: id,
+                assignment: a,
+                courseName: courseMap[a.courseId]?.name ?? "Unknown",
+                courseCode: courseMap[a.courseId]?.code ?? "",
+                batchName: batchMap[a.batchId]?.name ?? "Unknown"
+            )
         }
 
         isLoading = false
@@ -75,6 +71,7 @@ struct TeacherCoursesView: View {
                     }
                 }
             }
+            .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("My Courses")
             .refreshable {
                 guard let user = appState.currentUser else { return }
@@ -88,37 +85,41 @@ struct TeacherCoursesView: View {
     }
 
     private func courseCard(_ assignment: TeacherAssignmentDisplay) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.cornerRadiusMD)
-                    .fill(AppTheme.primaryGradient)
-                    .frame(width: 48, height: 48)
-
-                Image(systemName: "book.fill")
+        VStack(alignment: .leading, spacing: 12) {
+            Text(assignment.courseName)
+                .font(.title3.weight(.bold))
+                .foregroundColor(.white)
+            
+            HStack(spacing: 12) {
+                Label(assignment.courseCode, systemImage: "tag.fill")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
                     .foregroundColor(.white)
+                    .cornerRadius(8)
+                
+                Label(assignment.batchName, systemImage: "person.3.fill")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
             }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(assignment.courseName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-
-                HStack(spacing: AppTheme.spacingSM) {
-                    Text(assignment.courseCode)
-                    Text("•")
-                    Text(assignment.batchName)
-                }
-                .font(.caption)
-                .foregroundColor(AppTheme.textSecondary)
-            }
-
-            Spacer()
-
-            Image(systemName: "chart.bar.fill")
-                .foregroundColor(AppTheme.primary)
-                .font(.title3)
         }
-        .cwCard()
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.accent],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+                .shadow(color: AppTheme.primary.opacity(0.3), radius: 8, y: 4)
+        )
+        .padding(.vertical, 6)
     }
 }
 
@@ -224,7 +225,8 @@ struct CourseAnalyticsView: View {
                 }
             }
         }
-        .navigationTitle(assignment.courseCode)
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(assignment.courseCode)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.loadAnalytics(

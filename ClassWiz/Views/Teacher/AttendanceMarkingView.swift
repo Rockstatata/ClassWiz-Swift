@@ -94,6 +94,46 @@ final class AttendanceMarkingViewModel: ObservableObject {
         HapticManager.lightImpact()
     }
 
+    func startAutomatedSession(durationMinutes: Int, routineId: String) async -> AttendanceSession? {
+        do {
+            let session = try await AutomatedAttendanceService.shared.startSession(
+                routineId: routineId,
+                teacherId: teacherId,
+                courseId: courseId,
+                batchId: batchId,
+                durationByMinutes: durationMinutes
+            )
+            
+            let today = Calendar.current.startOfDay(for: selectedDate)
+            
+            await withTaskGroup(of: Void.self) { group in
+                for student in students {
+                    group.addTask {
+                        try? await AttendanceService.shared.markStudent(
+                            studentId: student.id,
+                            courseId: self.courseId,
+                            teacherId: self.teacherId,
+                            date: today,
+                            status: .absent
+                        )
+                        
+                        try? await NotificationService.shared.createNotification(
+                            receiverId: student.id,
+                            title: "Automated Attendance",
+                            message: "Automated attendance is active. Enter the code in the app to mark yourself present!",
+                            icon: "bolt.fill"
+                        )
+                    }
+                }
+            }
+            
+            return session
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func submitAttendance() async {
         isSaving = true
         errorMessage = nil
@@ -137,6 +177,8 @@ struct AttendanceMarkingView: View {
     let routine: RoutineDisplayItem
     @StateObject private var viewModel: AttendanceMarkingViewModel
     @State private var showConfirmation = false
+    @State private var activeSession: AttendanceSession?
+    @State private var isStartingSession = false
 
     init(routine: RoutineDisplayItem) {
         self.routine = routine
@@ -163,7 +205,8 @@ struct AttendanceMarkingView: View {
                 }
             }
         }
-        .navigationTitle("Mark Attendance")
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Mark Attendance")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Confirm Submission", isPresented: $showConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -176,7 +219,7 @@ struct AttendanceMarkingView: View {
         .task {
             await viewModel.loadStudents()
         }
-        .onChange(of: viewModel.selectedDate) { _, _ in
+        .onChange(of: viewModel.selectedDate) { _ in
             Task { await viewModel.loadStudents() }
         }
     }
@@ -330,10 +373,16 @@ struct AttendanceMarkingView: View {
             Button {
                 viewModel.toggleStatus(for: student.id)
             } label: {
-                Image(systemName: student.status.icon)
-                    .font(.title2)
-                    .foregroundColor(student.status.color)
-                    .symbolEffect(.bounce, value: student.status)
+                if #available(iOS 17.0, *) {
+                    Image(systemName: student.status.icon)
+                        .font(.title2)
+                        .foregroundColor(student.status.color)
+                        .symbolEffect(.bounce, value: student.status)
+                } else {
+                    Image(systemName: student.status.icon)
+                        .font(.title2)
+                        .foregroundColor(student.status.color)
+                }
             }
         }
         .padding(.vertical, AppTheme.spacingSM)
@@ -348,16 +397,121 @@ struct AttendanceMarkingView: View {
     private var submitBar: some View {
         VStack(spacing: 0) {
             Divider()
-            Button {
-                showConfirmation = true
-            } label: {
-                Text(viewModel.hasExistingRecords ? "Update Attendance" : "Submit Attendance")
+            HStack(spacing: AppTheme.spacingMD) {
+                Button {
+                    Task {
+                        isStartingSession = true
+                        activeSession = await viewModel.startAutomatedSession(durationMinutes: 5, routineId: routine.routine.id ?? UUID().uuidString)
+                        isStartingSession = false
+                    }
+                } label: {
+                    Image(systemName: "bolt.fill")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(width: 50, height: 50)
+                        .background(Circle().fill(AppTheme.accent))
+                }
+                .disabled(viewModel.isSaving || viewModel.students.isEmpty || isStartingSession)
+                
+                Button {
+                    showConfirmation = true
+                } label: {
+                    Text(viewModel.hasExistingRecords ? "Update Attendance" : "Submit Attendance")
+                }
+                .buttonStyle(CWPrimaryButtonStyle(isLoading: viewModel.isSaving))
+                .disabled(viewModel.isSaving || viewModel.students.isEmpty)
             }
-            .buttonStyle(CWPrimaryButtonStyle(isLoading: viewModel.isSaving))
-            .disabled(viewModel.isSaving || viewModel.students.isEmpty)
             .padding(AppTheme.spacingMD)
             .padding(.bottom, AppTheme.spacingSM)
         }
         .background(AppTheme.surface.ignoresSafeArea(edges: .bottom))
+        .sheet(item: $activeSession) { session in
+            AutomatedAttendanceOverlay(session: session) {
+                Task {
+                    try? await AutomatedAttendanceService.shared.endSession(sessionId: session.id ?? "")
+                    await MainActor.run {
+                        activeSession = nil
+                        // Reload students to see new results
+                        Task { await viewModel.loadStudents() }
+                    }
+                }
+            }
+            .interactiveDismissDisabled()
+        }
+    }
+}
+
+// MARK: - Automated Attendance Overlay
+
+struct AutomatedAttendanceOverlay: View {
+    let session: AttendanceSession
+    let onEnd: () -> Void
+    @State private var timeRemaining: Int = 0
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        VStack(spacing: AppTheme.spacingLG) {
+            Image(systemName: "bolt.badge.clock.fill")
+                .font(.system(size: 48))
+                .foregroundColor(AppTheme.accent)
+                
+            Text("Automated Attendance Active")
+                .font(.title2.weight(.bold))
+                .foregroundColor(AppTheme.textPrimary)
+            
+            Text("Students can now enter this code on their device to mark themselves as present.")
+                .multilineTextAlignment(.center)
+                .font(.subheadline)
+                .foregroundColor(AppTheme.textSecondary)
+                .padding(.horizontal, AppTheme.spacingMD)
+            
+            Text(session.secretCode)
+                .font(.system(size: 56, weight: .black, design: .monospaced))
+                .foregroundColor(AppTheme.primary)
+                .padding(.vertical, AppTheme.spacingMD)
+                .padding(.horizontal, AppTheme.spacingLG)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.cornerRadiusLG)
+                        .fill(AppTheme.primary.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cornerRadiusLG)
+                        .stroke(AppTheme.primary.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [8]))
+                )
+            
+            HStack {
+                Image(systemName: "timer")
+                Text("Expires in \(timeRemaining / 60):\(String(format: "%02d", timeRemaining % 60))")
+                    .font(.headline)
+                    .contentTransition(.numericText(countsDown: true))
+            }
+            .foregroundColor(timeRemaining < 60 ? AppTheme.critical : AppTheme.warning)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .background((timeRemaining < 60 ? AppTheme.critical : AppTheme.warning).opacity(0.15))
+            .clipShape(Capsule())
+            .onReceive(timer) { _ in
+                withAnimation {
+                    timeRemaining = Int(session.expiresAt.timeIntervalSinceNow)
+                }
+                if timeRemaining <= 0 {
+                    onEnd()
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: onEnd) {
+                Text("End Session Early")
+            }
+            .buttonStyle(CWPrimaryButtonStyle(isLoading: false))
+            .tint(AppTheme.critical)
+            .padding(.horizontal, AppTheme.spacingMD)
+        }
+        .padding(.vertical, AppTheme.spacingXL)
+        .background(AppTheme.surface)
+        .onAppear {
+            timeRemaining = Int(session.expiresAt.timeIntervalSinceNow)
+        }
     }
 }
